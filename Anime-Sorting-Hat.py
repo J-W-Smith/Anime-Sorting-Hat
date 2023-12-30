@@ -17,7 +17,11 @@ for filename in os.listdir(directory):
         if match:
             season_number = match.group(1)  # Extract the season number (like '3' from 'S3')
             anime_and_subgroup = filename.split(' - ')[0].split('] ')[1]  # Extract anime name and subgroup
-            anime_name, _ = anime_and_subgroup.rsplit(' S' + season_number, 1)  # Extract anime name without brackets
+            
+            # Revised logic to split anime name and remove season number
+            anime_name = anime_and_subgroup.rsplit(' S' + season_number, 1)[0].strip()
+            
+            print(f"Detected anime name: {anime_name}, Season: {season_number}")  # Debugging line
             
             # Create the anime directory if it doesn't exist
             anime_dir = os.path.join(directory, anime_name)
@@ -31,10 +35,13 @@ for filename in os.listdir(directory):
             
             # Set the destination path inside the season directory
             destination_path = os.path.join(season_dir, filename)
+            
         else:
             # If no season pattern is found, place the file directly in the anime directory
             anime_and_subgroup = filename.split(' - ')[0].split('] ')[1]  # Extract anime name and subgroup
-            anime_name, _ = anime_and_subgroup.rsplit(' ', 1)  # Extract anime name without brackets
+            anime_name = anime_and_subgroup.split(' S')[0].strip()  # Extract anime name without brackets
+            
+            print(f"Detected anime name (No Season): {anime_name}")  # Debugging line
             
             # Create the anime directory if it doesn't exist
             anime_dir = os.path.join(directory, anime_name)
