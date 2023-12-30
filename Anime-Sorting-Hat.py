@@ -5,8 +5,8 @@ import re
 # Get the current working directory
 directory = os.getcwd()
 
-# Regular expression pattern to extract season number like 'S01E09'
-pattern = re.compile(r'S(\d{2})E\d{2}')
+# Regular expression pattern to extract season number like 'S3', 'S4', etc.
+pattern = re.compile(r'S(\d+)')
 
 # Loop through each file in the directory
 for filename in os.listdir(directory):
@@ -15,25 +15,34 @@ for filename in os.listdir(directory):
         match = pattern.search(filename)
         
         if match:
-            season_number = match.group(1)  # Extract the two-digit season number
-            anime_name = filename.split('] ')[1].split(' - ')[0]
+            season_number = match.group(1)  # Extract the season number (like '3' from 'S3')
+            anime_and_subgroup = filename.split(' - ')[0].split('] ')[1]  # Extract anime name and subgroup
+            anime_name, _ = anime_and_subgroup.rsplit(' S' + season_number, 1)  # Extract anime name without brackets
+            
+            # Create the anime directory if it doesn't exist
+            anime_dir = os.path.join(directory, anime_name)
+            if not os.path.exists(anime_dir):
+                os.makedirs(anime_dir)
             
             # Create the season directory if it doesn't exist
-            season_dir = os.path.join(directory, anime_name, f"Season {season_number}")
+            season_dir = os.path.join(anime_dir, f"Season {season_number}")
             if not os.path.exists(season_dir):
                 os.makedirs(season_dir)
             
             # Set the destination path inside the season directory
             destination_path = os.path.join(season_dir, filename)
         else:
-            # If no season pattern is found, place the file in the anime directory
-            anime_name = filename.split('] ')[1].split(' - ')[0]
-            destination_path = os.path.join(directory, anime_name, filename)
+            # If no season pattern is found, place the file directly in the anime directory
+            anime_and_subgroup = filename.split(' - ')[0].split('] ')[1]  # Extract anime name and subgroup
+            anime_name, _ = anime_and_subgroup.rsplit(' ', 1)  # Extract anime name without brackets
             
             # Create the anime directory if it doesn't exist
             anime_dir = os.path.join(directory, anime_name)
             if not os.path.exists(anime_dir):
                 os.makedirs(anime_dir)
+            
+            # Set the destination path in the anime directory
+            destination_path = os.path.join(anime_dir, filename)
         
         # Construct the source path for the .mkv file
         source_path = os.path.join(directory, filename)
