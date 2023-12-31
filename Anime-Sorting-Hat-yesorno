@@ -1,0 +1,63 @@
+import os
+import shutil
+import re
+
+# Get the current working directory
+directory = os.getcwd()
+
+# Regular expression pattern to extract season number like 'S3', 'S4', etc.
+pattern = re.compile(r'S(\d+)')
+
+anime_data = []  # List to store anime names and seasons
+
+# Loop through each file in the directory
+for filename in os.listdir(directory):
+    if filename.endswith('.mkv'):
+        match = pattern.search(filename)
+        
+        if match:
+            season_number = match.group(1)
+            anime_and_subgroup = filename.split(' - ')[0].split('] ')[1]
+            anime_name = anime_and_subgroup.rsplit(' S' + season_number, 1)[0].strip()
+            anime_data.append((anime_name, season_number, filename))
+        else:
+            anime_and_subgroup = filename.split(' - ')[0].split('] ')[1]
+            anime_name = anime_and_subgroup.split(' S')[0].strip()
+            anime_data.append((anime_name, "No Season", filename))
+
+# Display the detected anime names and seasons
+print("\nDetected Anime Names and Seasons:")
+for anime, season, _ in anime_data:
+    print(f"Anime: {anime}, Season: {season}")
+
+# Ask user for confirmation to continue
+user_input = input("\nWould you like to continue and create the folders and move files? (yes/no): ").lower()
+
+if user_input == "yes":
+    # Loop through each detected anime, create folders, and move files
+    for anime, season, filename in anime_data:
+        source_path = os.path.join(directory, filename)
+        
+        if season != "No Season":
+            anime_dir = os.path.join(directory, anime)
+            if not os.path.exists(anime_dir):
+                os.makedirs(anime_dir)
+            
+            season_dir = os.path.join(anime_dir, f"Season {season}")
+            if not os.path.exists(season_dir):
+                os.makedirs(season_dir)
+            
+            destination_path = os.path.join(season_dir, filename)
+        else:
+            anime_dir = os.path.join(directory, anime)
+            if not os.path.exists(anime_dir):
+                os.makedirs(anime_dir)
+            
+            destination_path = os.path.join(anime_dir, filename)
+        
+        # Move the .mkv file to the respective destination path
+        shutil.move(source_path, destination_path)
+    
+    print("\nYour crap was moved and sorted, you're welcome!")
+else:
+    print("\nFine be that way then!")
