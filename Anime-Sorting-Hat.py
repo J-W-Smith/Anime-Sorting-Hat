@@ -16,9 +16,11 @@ for filename in os.listdir(directory):
         
         if match:
             season_number = match.group(1)  # Extract the season number (like '3' from 'S3')
+            
+            # Extract anime name by looking for the space-dash-space pattern
             anime_and_subgroup = filename.split(' - ')[0].split('] ')[1]  # Extract anime name and subgroup
             
-            # Revised logic to split anime name and remove season number
+            # Splitting based on the space-dash-space pattern and then looking for the S[number] just before that
             anime_name = anime_and_subgroup.rsplit(' S' + season_number, 1)[0].strip()
             
             print(f"Detected anime name: {anime_name}, Season: {season_number}")  # Debugging line
