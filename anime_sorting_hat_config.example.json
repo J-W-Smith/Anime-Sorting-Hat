@@ -1,0 +1,17 @@
+{
+  "aliases": {
+    "hitori no shita": "Hitori no Shita",
+    "hitori no shita - the outcast": "Hitori no Shita",
+    "the outcast": "Hitori no Shita",
+    "rust iron returns": "Hitori no Shita",
+    "the outcast - rust iron returns": "Hitori no Shita"
+  },
+  "dash_normalize_whitelist": [
+    "Hitori no Shita"
+  ],
+  "skip_folders": [
+    "Movies",
+    "OVAs",
+    "Misc"
+  ]
+}
