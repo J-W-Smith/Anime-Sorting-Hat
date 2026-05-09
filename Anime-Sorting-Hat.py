@@ -6,6 +6,7 @@ A safer anime media organizer for Windows/Emby/Plex style libraries.
 
 Highlights:
 - Dry-run by default; use --apply to actually move files.
+- Prompts for a folder when no source folder is provided.
 - Recursively scans existing folders by default.
 - Groups files into: Anime Name/Season 01/
 - Handles common anime release formats:
@@ -25,6 +26,7 @@ import json
 import os
 import re
 import shutil
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
@@ -90,6 +92,40 @@ class SortDecision:
     season: int | None
     category: str
     reason: str
+
+
+def choose_folder_with_dialog() -> str | None:
+    """Open a Windows-style folder picker. Returns None if unavailable/canceled."""
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes("-topmost", True)
+        selected = filedialog.askdirectory(title="Choose anime folder to sort")
+        root.destroy()
+        return selected or None
+    except Exception:
+        return None
+
+
+def prompt_for_source_folder() -> Path | None:
+    """Ask for the folder to scan when no command-line source is supplied."""
+    print("No anime folder was supplied.")
+    selected = choose_folder_with_dialog()
+
+    if selected:
+        return Path(selected).expanduser().resolve()
+
+    print("Folder picker was canceled or unavailable.")
+    print("Paste the full folder path to scan, or press Enter to cancel.")
+    typed = input("Anime folder: ").strip().strip('"')
+
+    if not typed:
+        return None
+
+    return Path(typed).expanduser().resolve()
 
 
 def load_config(path: Path | None) -> dict[str, Any]:
@@ -242,7 +278,6 @@ def parent_title_guess(source_file: Path, library_root: Path) -> tuple[str | Non
     if not rel_parent.parts:
         return None, None
 
-    # Prefer nearest useful folder, but skip Season folders.
     for part in reversed(rel_parent.parts):
         if re.fullmatch(r"Season \d{1,2}", part, flags=re.I):
             continue
@@ -295,7 +330,6 @@ def decide_destination(
 
     parent_title, parent_season = parent_title_guess(source_file, library_root)
 
-    # If the filename starts with S01E01 and has no real show title, use parent folder as title.
     if title is None and parent_title:
         title = parent_title
     elif title and re.match(r"^S\d{1,2}E\d{1,3}\b", strip_release_group(source_file.stem), flags=re.I) and parent_title:
@@ -424,16 +458,28 @@ def clean_empty_dirs(library_root: Path, dry_run: bool, skip_folders: set[str]) 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Safely organize anime files into show/season folders.")
-    parser.add_argument("source", nargs="?", default=os.getcwd(), help="Anime library folder to scan. Defaults to current directory.")
+    parser.add_argument("source", nargs="?", default=None, help="Anime library folder to scan. If omitted, a folder picker/prompt will open.")
     parser.add_argument("--apply", action="store_true", help="Actually move files. Without this, the script only previews changes.")
     parser.add_argument("--no-recursive", action="store_true", help="Only scan the top-level source folder.")
     parser.add_argument("--config", type=Path, default=None, help="Optional JSON config file with aliases and settings.")
     parser.add_argument("--keep-release-group", action="store_true", help="Keep leading release group tags like [SubsPlease] in destination filenames.")
     parser.add_argument("--clean-empty", action="store_true", help="Remove empty folders after moving files.")
     parser.add_argument("--videos-only", action="store_true", help="Only sort video files; do not repair/move orphan sidecar files.")
+    parser.add_argument("--no-folder-dialog", action="store_true", help="Use console prompt only when no source folder is supplied.")
     args = parser.parse_args()
 
-    library_root = Path(args.source).expanduser().resolve()
+    if args.source:
+        library_root = Path(args.source).expanduser().resolve()
+    else:
+        if args.no_folder_dialog:
+            selected = None
+        else:
+            selected = prompt_for_source_folder()
+        if selected is None:
+            print("[CANCELLED] No folder selected.")
+            return 1
+        library_root = selected
+
     if not library_root.exists() or not library_root.is_dir():
         print(f"[ERROR] Source folder does not exist or is not a directory: {library_root}")
         return 1
@@ -504,4 +550,8 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except KeyboardInterrupt:
+        print("\n[CANCELLED] Interrupted by user.")
+        raise SystemExit(130)
