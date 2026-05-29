@@ -22,9 +22,16 @@
 
     "jidou hanbaiki ni umarekawatta ore wa meikyuu wo samayou s3": "Jidou Hanbaiki ni Umarekawatta Ore wa Meikyuu wo Samayou",
 
+    "kamikatsu": "KamiKatsu",
+    "kamikatsu ember": "KamiKatsu",
+    "kamikatsu - ember": "KamiKatsu",
+    "we know we are not worthy o great lord mitama": "KamiKatsu",
+
     "kekkon yubiwa monogatari s2": "Kekkon Yubiwa Monogatari",
 
     "lastame s2": "LasTame",
+
+    "quanzhi fashi s7": "Quanzhi Fashi",
 
     "sousou no frieren s2": "Sousou no Frieren",
 
@@ -48,6 +55,8 @@
   "skip_folders": [
     "Movies",
     "OVAs",
-    "Misc"
+    "Misc",
+    ".venv",
+    "Anime-Sorting-Hat"
   ]
 }

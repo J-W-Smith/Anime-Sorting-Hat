@@ -14,8 +14,11 @@ import re
 from collections import defaultdict
 from pathlib import Path
 
-VIDEO_EXTENSIONS = {".mkv", ".mp4", ".avi", ".mov", ".m4v", ".wmv"}
-SKIP_FOLDERS = {"Movies", "OVAs", "Misc", ".git", "__pycache__", "@eaDir"}
+VIDEO_EXTENSIONS = {".mkv", ".mp4", ".avi", ".mov", ".m4v", ".wmv", ".webm", ".ts"}
+SKIP_FOLDERS = {"Movies", "OVAs", "Misc", ".git", "__pycache__", "@eaDir", ".venv", "venv", "env", "Anime-Sorting-Hat"}
+DASH_CHARS = r"\-\u2010\u2011\u2012\u2013\u2014\u2212"
+DASH_CLASS = rf"[{DASH_CHARS}]"
+DASH_RUN_PATTERN = rf"{DASH_CLASS}+"
 
 NOISE_WORDS = {
     "ova",
@@ -58,7 +61,7 @@ def normalize_title(name: str) -> str:
     name = re.sub(r"\bS\d{1,2}[- ]?E?\d{1,3}\b", " ", name, flags=re.I)
     name = re.sub(r"\b\d{1,3}v?\d?\b", " ", name, flags=re.I)
     name = re.sub(r"[._]+", " ", name)
-    name = re.sub(r"[-–—]+", " - ", name)
+    name = re.sub(DASH_RUN_PATTERN, " - ", name)
     name = re.sub(r"\s+", " ", name).strip().lower()
 
     for word in sorted(NOISE_WORDS, key=len, reverse=True):

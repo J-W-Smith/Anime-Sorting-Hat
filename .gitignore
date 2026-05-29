@@ -11,6 +11,9 @@ env/
 # Local config / generated output
 anime_sorting_hat_config.json
 alias_suggestions.txt
+apply-*.txt
+cleanup-*.csv
+dryrun-*.txt
 *.log
 
 # OS/editor junk

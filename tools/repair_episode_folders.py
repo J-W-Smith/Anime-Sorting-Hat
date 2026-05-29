@@ -24,9 +24,12 @@ from pathlib import Path
 from typing import Any
 
 INVALID_WINDOWS_CHARS = r'[<>:"/\\|?*]'
-DEFAULT_SKIP_FOLDERS = {"Movies", "OVAs", "Misc", "@eaDir", ".git", "__pycache__"}
+DEFAULT_SKIP_FOLDERS = {"Movies", "OVAs", "Misc", "@eaDir", ".git", "__pycache__", ".venv", "venv", "env", "Anime-Sorting-Hat"}
+DASH_CHARS = r"\-\u2010\u2011\u2012\u2013\u2014\u2212"
+DASH_CLASS = rf"[{DASH_CHARS}]"
+DASH_RUN_PATTERN = rf"{DASH_CLASS}+"
 EPISODE_FOLDER_PATTERN = re.compile(
-    r"^(?P<title>.+?)\s*[-–—]\s*S(?P<season>\d{1,2})\s*[- ]\s*(?P<episode>\d{1,3})(?:v\d+)?\s*$",
+    rf"^(?P<title>.+?)\s*{DASH_CLASS}\s*S(?P<season>\d{{1,2}})\s*(?:{DASH_CLASS}| )\s*(?P<episode>\d{{1,3}})(?:v\d+)?\s*$",
     re.IGNORECASE,
 )
 
@@ -40,14 +43,18 @@ def clean_windows_name(name: str) -> str:
 def normalize_key(value: str) -> str:
     value = value.lower()
     value = re.sub(r"[._]+", " ", value)
-    value = re.sub(r"[-–—]+", " - ", value)
+    value = re.sub(DASH_RUN_PATTERN, " - ", value)
     value = re.sub(r"\s+", " ", value)
     return value.strip()
 
 
 def load_config(path: Path | None) -> dict[str, Any]:
     if path is None:
-        return {}
+        default_path = Path(__file__).resolve().parent.parent / "anime_sorting_hat_config.json"
+        if default_path.exists():
+            path = default_path
+        else:
+            return {}
     if not path.exists():
         print(f"[WARN] Config file not found: {path}")
         return {}
@@ -69,7 +76,7 @@ def canonicalize_dash_title(title: str, dash_whitelist: list[str]) -> str:
     for item in dash_whitelist:
         item_key = normalize_key(item)
         if item_key and title_key.startswith(item_key + " - "):
-            return title.split(" - ", 1)[0].strip()
+            return re.split(rf"\s*{DASH_CLASS}\s*", title, maxsplit=1)[0].strip()
     return title
 
 

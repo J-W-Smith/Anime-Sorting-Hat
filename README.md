@@ -27,6 +27,7 @@ Anime Name/
 - Sends unclassified files to `Misc/`.
 - Supports recursive cleanup of an already-sorted library.
 - Moves matching sidecar files with videos, such as `.nfo`, `.srt`, `.ass`, and `.ssa`.
+- Ignores generic Emby/Plex metadata leftovers like `tvshow.nfo` and `season.nfo`.
 - Supports custom aliases so related titles can be merged under one canonical name.
 
 ## Safety first
@@ -80,8 +81,10 @@ copy anime_sorting_hat_config.example.json anime_sorting_hat_config.json
 Then run with:
 
 ```powershell
-python Anime-Sorting-Hat.py "E:\~Anime" --config anime_sorting_hat_config.json
+python Anime-Sorting-Hat.py "E:\~Anime"
 ```
+
+When `anime_sorting_hat_config.json` sits next to `Anime-Sorting-Hat.py`, it is loaded automatically. You can still pass `--config path\to\config.json` to use a different file.
 
 Example alias use:
 
@@ -99,7 +102,9 @@ Example alias use:
   "skip_folders": [
     "Movies",
     "OVAs",
-    "Misc"
+    "Misc",
+    ".venv",
+    "Anime-Sorting-Hat"
   ]
 }
 ```

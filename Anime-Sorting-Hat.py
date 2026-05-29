@@ -36,10 +36,15 @@ try:
 except ImportError:
     anitopy = None
 
-VIDEO_EXTENSIONS = {".mkv", ".mp4", ".avi", ".mov", ".m4v", ".wmv"}
-SIDECAR_EXTENSIONS = {".nfo", ".srt", ".ass", ".ssa", ".sub", ".idx", ".txt"}
-DEFAULT_SKIP_FOLDERS = {"Movies", "OVAs", "Misc", "@eaDir", ".git", "__pycache__"}
+VIDEO_EXTENSIONS = {".mkv", ".mp4", ".avi", ".mov", ".m4v", ".wmv", ".webm", ".ts"}
+SIDECAR_EXTENSIONS = {".nfo", ".srt", ".ass", ".ssa", ".sub", ".idx"}
+DEFAULT_SKIP_FOLDERS = {"Movies", "OVAs", "Misc", "@eaDir", ".git", "__pycache__", ".venv", "venv", "env", "Anime-Sorting-Hat"}
+GENERIC_METADATA_NAMES = {"tvshow.nfo", "season.nfo"}
+GENERIC_METADATA_PATTERN = re.compile(r"^(?:tvshow|season)(?: \(\d+\))?\.nfo$", re.IGNORECASE)
 INVALID_WINDOWS_CHARS = r'[<>:"/\\|?*]'
+DASH_CHARS = r"\-\u2010\u2011\u2012\u2013\u2014\u2212"
+DASH_CLASS = rf"[{DASH_CHARS}]"
+DASH_RUN_PATTERN = rf"{DASH_CLASS}+"
 
 MOVIE_KEYWORDS = {
     "movie",
@@ -130,7 +135,11 @@ def prompt_for_source_folder() -> Path | None:
 
 def load_config(path: Path | None) -> dict[str, Any]:
     if path is None:
-        return {}
+        default_path = Path(__file__).with_name("anime_sorting_hat_config.json")
+        if default_path.exists():
+            path = default_path
+        else:
+            return {}
     if not path.exists():
         print(f"[WARN] Config file not found: {path}")
         return {}
@@ -153,7 +162,7 @@ def strip_noise_for_title(name: str) -> str:
     name = re.sub(r"\[[^\]]+\]", " ", name)
     name = re.sub(r"\([^)]*\)", " ", name)
     name = re.sub(r"[._]+", " ", name)
-    name = re.sub(r"[-–—]+", " - ", name)
+    name = re.sub(DASH_RUN_PATTERN, " - ", name)
 
     for word in sorted(NOISE_WORDS, key=len, reverse=True):
         name = re.sub(rf"\b{re.escape(word)}\b", " ", name, flags=re.I)
@@ -167,7 +176,7 @@ def strip_noise_for_title(name: str) -> str:
 def normalize_key(value: str) -> str:
     value = strip_release_group(value).lower()
     value = re.sub(r"[._]+", " ", value)
-    value = re.sub(r"[-–—]+", " - ", value)
+    value = re.sub(DASH_RUN_PATTERN, " - ", value)
     value = re.sub(r"\s+", " ", value)
     return value.strip()
 
@@ -187,13 +196,15 @@ def canonicalize_dash_title(title: str, dash_whitelist: Iterable[str]) -> str:
     for item in dash_whitelist:
         item_key = normalize_key(item)
         if item_key and title_key.startswith(item_key + " - "):
-            return title.split(" - ", 1)[0].strip()
+            return re.split(rf"\s*{DASH_CLASS}\s*", title, maxsplit=1)[0].strip()
     return title
 
 
 def extract_sxx_exx(filename: str) -> tuple[int | None, int | None, str | None]:
     stem = strip_release_group(Path(filename).stem)
     patterns = [
+        rf"^(?P<title>.+?)\s*{DASH_CLASS}?\s*S(?P<season>\d{{1,2}})\s*(?:{DASH_CLASS}| )\s*(?P<episode>\d{{1,3}})(?:v\d+)?\b",
+        rf"^(?P<title>.+?)\s*{DASH_CLASS}?\s*S(?P<season>\d{{1,2}})E(?P<episode>\d{{1,3}})(?:v\d+)?\b",
         r"^(?P<title>.+?)\s*[-–—]?\s*S(?P<season>\d{1,2})\s*[- ]\s*(?P<episode>\d{1,3})(?:v\d+)?\b",
         r"^(?P<title>.+?)\s*[-–—]?\s*S(?P<season>\d{1,2})E(?P<episode>\d{1,3})(?:v\d+)?\b",
         r"^S(?P<season>\d{1,2})E(?P<episode>\d{1,3})[-_. ]*(?P<title>.*)$",
@@ -210,6 +221,14 @@ def extract_sxx_exx(filename: str) -> tuple[int | None, int | None, str | None]:
 
 def extract_standard_episode(filename: str) -> tuple[str | None, int | None]:
     stem = strip_release_group(Path(filename).stem)
+    match = re.search(
+        rf"^(?P<title>.+?)\s*{DASH_CLASS}\s*(?P<episode>\d{{1,3}})(?:v\d+)?(?:\s|\(|\[|$)",
+        stem,
+        flags=re.I,
+    )
+    if match:
+        return match.group("title").strip(" -_"), int(match.group("episode"))
+
     match = re.search(
         r"^(?P<title>.+?)\s*[-–—]\s*(?P<episode>\d{1,3})(?:v\d+)?(?:\s|\(|\[|$)",
         stem,
@@ -231,6 +250,11 @@ def extract_season_from_title(title: str) -> tuple[str, int | None]:
 
 def extract_season_range_from_title(title: str) -> tuple[str, int | None]:
     """Handle folder names like 'Show S01-S02 ReleaseGroup' by choosing the first season."""
+    match = re.search(rf"\bS(?P<season>\d{{1,2}})\s*{DASH_CLASS}\s*S?\d{{1,2}}\b", title, flags=re.I)
+    if match:
+        season = int(match.group("season"))
+        title = re.sub(rf"\bS\d{{1,2}}\s*{DASH_CLASS}\s*S?\d{{1,2}}\b", "", title, flags=re.I)
+        return title.strip(" -_"), season
     match = re.search(r"\bS(?P<season>\d{1,2})\s*[-–—]\s*S?\d{1,2}\b", title, flags=re.I)
     if not match:
         return title, None
@@ -303,6 +327,9 @@ def decide_destination(
     remove_release_group: bool,
 ) -> SortDecision | None:
     if source_file.suffix.lower() not in VIDEO_EXTENSIONS | SIDECAR_EXTENSIONS:
+        return None
+
+    if source_file.name.lower() in GENERIC_METADATA_NAMES or GENERIC_METADATA_PATTERN.match(source_file.name):
         return None
 
     lower_name = source_file.name.lower()
@@ -530,6 +557,8 @@ def main() -> int:
             sidecars = [p for p in matching_sidecars(source_file) if p.exists()]
             if sidecars:
                 print(f"       sidecars: {', '.join(p.name for p in sidecars)}")
+                for sidecar in sidecars:
+                    moved_or_planned.add(sidecar)
 
         if not dry_run:
             final_destination = unique_destination(destination)
