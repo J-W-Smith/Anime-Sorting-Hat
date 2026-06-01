@@ -27,8 +27,9 @@ Anime Name/
 - Sends unclassified files to `Misc/`.
 - Supports recursive cleanup of an already-sorted library.
 - Moves matching sidecar files with videos, such as `.nfo`, `.srt`, `.ass`, and `.ssa`.
-- Ignores generic Emby/Plex metadata leftovers like `tvshow.nfo` and `season.nfo`.
+- Does **not** let orphan `.nfo` files create folders during normal runs.
 - Supports custom aliases so related titles can be merged under one canonical name.
+- Includes built-in Hitori No Shita aliases so `The Outcast`, `Rust Iron Returns`, and `Hitori no Shita` variants collapse together.
 
 ## Safety first
 
@@ -54,6 +55,28 @@ To only scan the top-level folder:
 
 ```powershell
 python Anime-Sorting-Hat.py "E:\~Anime" --no-recursive
+```
+
+## Orphan sidecar files
+
+Normal runs only move `.nfo`, `.srt`, `.ass`, and other sidecars when there is a matching video file with the same base name.
+
+That means an orphan file like this will **not** create a show folder by itself:
+
+```text
+Some Random Metadata.nfo
+```
+
+If you intentionally want to repair orphan sidecars, use:
+
+```powershell
+python Anime-Sorting-Hat.py "E:\~Anime" --repair-orphan-sidecars
+```
+
+Preview first. Then apply only if the preview looks right:
+
+```powershell
+python Anime-Sorting-Hat.py "E:\~Anime" --repair-orphan-sidecars --apply
 ```
 
 ## Install
@@ -91,13 +114,13 @@ Example alias use:
 ```json
 {
   "aliases": {
-    "hitori no shita": "Hitori no Shita",
-    "hitori no shita - the outcast": "Hitori no Shita",
-    "the outcast": "Hitori no Shita",
-    "rust iron returns": "Hitori no Shita"
+    "hitori no shita": "Hitori No Shita",
+    "hitori no shita - the outcast": "Hitori No Shita",
+    "the outcast": "Hitori No Shita",
+    "rust iron returns": "Hitori No Shita"
   },
   "dash_normalize_whitelist": [
-    "Hitori no Shita"
+    "Hitori No Shita"
   ],
   "skip_folders": [
     "Movies",
@@ -120,7 +143,7 @@ Hitori no Shita S6
 into:
 
 ```text
-Hitori no Shita/
+Hitori No Shita/
 ```
 
 ## Filename cleanup
